@@ -78,28 +78,32 @@ class Decoder(srd.Decoder):
     def decode(self, ss, es, data):
         ptype, mosi, miso = data
 
-        # For now, only use DATA and BITS packets.
         if ptype not in ('DATA'):
             return
 
         if self.state == 'IDLE':
-            if mosi & 127:
+            if mosi == 0xF8:
                 self.ann = Ann.CMD
                 self.ann_start = ss
                 self.state = 'CMD0'
                 self.val = 0
-            else:
+            elif mosi == 0xFA:
                 self.ann = Ann.DATA
                 self.ann_start = ss
                 self.state = 'DATA0'
                 self.val = 0
+            else:
+                # Not sure what to do here
+                pass
         elif self.state in ['CMD0', 'DATA0']:
             self.val = mosi & 0xF0
             self.state = self.state.replace('0', '1')
         elif self.state in ['CMD1', 'DATA1']:
             self.val += (mosi >> 4 )
             txt = f"{self.val:02X} "
-            if self.state == 'CMD1':
+            if self.state == 'DATA1':
+                txt += chr(self.val)
+            elif self.state == 'CMD1':
                 if self.val & 0x80:
                     if self.extended:
                         txt += "Set GDRAM "
